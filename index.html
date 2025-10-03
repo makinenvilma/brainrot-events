@@ -42,8 +42,7 @@
 
   <script>
     // --- CONFIGURATION ---
-    // Each event now has its OWN anchor (start moment).
-    // For each anchor you can use mode "UTC" (global) or "LOCAL" (interpreted in viewer's timezone).
+    // For each anchor you can use mode "UTC" (global) or "LOCAL".
 
     // Helper shorthands for intervals
     const s = (n) => n * 1000;
@@ -53,7 +52,7 @@
     const w = (n) => n * 7 * 24 * 60 * 60 * 1000;
 
     // Example: set each event's own anchor here
-    // NOTE: month is 1–12 (code converts it internally)
+    // NOTE: month is 1–12, day is 1–31, hour is 0–23
     const EVENTS = [
       {
         name: "Underwater Event",
