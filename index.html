@@ -30,7 +30,6 @@
       <div>
         <h1>Fortnite Brainrot – Events</h1>
         <div class="muted" id="tz"></div>
-        <div class="muted">Anchor time: <span id="anchorText"></span></div>
       </div>
     </header>
 
@@ -43,17 +42,8 @@
 
   <script>
     // --- CONFIGURATION ---
-    // Set the ONE true start moment here: all timers align to this.
-    // mode: "UTC" (same moment globally) or "LOCAL" (interpreted in the viewer's local timezone)
-    const START_AT = {
-      mode: "UTC",   // "UTC" or "LOCAL"
-      year: 2025,
-      month: 10,       // 1-12 (human-friendly; code subtracts 1)
-      day: 3,         // 1-31 
-      hour: 6,        // 0-23
-      minute: 0,
-      second: 0
-    };
+    // Each event now has its OWN anchor (start moment).
+    // For each anchor you can use mode "UTC" (global) or "LOCAL" (interpreted in viewer's timezone).
 
     // Helper shorthands for intervals
     const s = (n) => n * 1000;
@@ -62,11 +52,29 @@
     const d = (n) => n * 24 * 60 * 60 * 1000;
     const w = (n) => n * 7 * 24 * 60 * 60 * 1000;
 
-    // Your events (all start from START_AT)
+    // Example: set each event's own anchor here
+    // NOTE: month is 1–12 (code converts it internally)
     const EVENTS = [
-      { name: "Underwater Event", intervalMs: h(3) },
-      { name: "LR Event", intervalMs: h(12) },
-      { name: "Jack's Dance Performance", intervalMs: w(1) },
+      {
+        name: "Underwater Event",
+        intervalMs: h(3),
+        anchor: { mode: "UTC", year: 2025, month: 10, day: 3, hour: 7, minute: 0, second: 0 } // every 3 hours
+      },
+      {
+        name: "LR Event",
+        intervalMs: h(12),
+        anchor: { mode: "UTC", year: 2025, month: 10, day: 3, hour: 6, minute: 0, second: 0 } // every 12 hours
+      },
+      {
+        name: "Guaranteed God",
+        intervalMs: h(1),
+        anchor: { mode: "UTC", year: 2025, month: 10, day: 5, hour: 6, minute: 30, second: 0 } // every 1 hour
+      },
+      {
+        name: "Guaranteed Secret",
+        intervalMs: w(1),
+        anchor: { mode: "UTC", year: 2025, month: 10, day: 5, hour: 6, minute: 0, second: 0 } // weekly start
+      },
     ];
     // --- END CONFIGURATION ---
 
@@ -100,21 +108,17 @@
       return parts.length ? parts.join(' ') : `${ms} ms`;
     }
 
-    const grid = document.getElementById('grid');
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    document.getElementById('tz').textContent = `Timezone: ${tz} (start mode: ${START_AT.mode})`;
-
-    function computeAnchorMs() {
-      const monIdx = (START_AT.month - 1);
-      if (START_AT.mode === 'LOCAL') {
-        return new Date(START_AT.year, monIdx, START_AT.day, START_AT.hour, START_AT.minute, START_AT.second, 0).getTime();
+    function computeAnchorMs(cfg) {
+      const monIdx = (cfg.month - 1);
+      if (cfg.mode === 'LOCAL') {
+        return new Date(cfg.year, monIdx, cfg.day, cfg.hour, cfg.minute, cfg.second, 0).getTime();
       }
-      // default to UTC
-      return Date.UTC(START_AT.year, monIdx, START_AT.day, START_AT.hour, START_AT.minute, START_AT.second, 0);
+      return Date.UTC(cfg.year, monIdx, cfg.day, cfg.hour, cfg.minute, cfg.second, 0);
     }
 
-    const ANCHOR_MS = computeAnchorMs();
-    document.getElementById('anchorText').textContent = new Date(ANCHOR_MS).toLocaleString();
+    const grid = document.getElementById('grid');
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    document.getElementById('tz').textContent = `Timezone: ${tz} (per-event anchors)`;
 
     const cards = EVENTS.map(evt => {
       const el = document.createElement('div');
@@ -122,6 +126,7 @@
       el.innerHTML = `
         <h2>${evt.name}</h2>
         <div class="small">Interval: ${humanizeInterval(evt.intervalMs)}</div>
+        <div class="small">Anchor: <span data-anchor>-</span></div>
         <div style="margin-top:14px" class="big" data-countdown>00:00:00</div>
         <div class="small" style="margin-top:6px">Next: <span data-next>-</span></div>
         <div class="bar"><div data-bar></div></div>
@@ -129,6 +134,9 @@
       grid.appendChild(el);
       return {
         intervalMs: evt.intervalMs,
+        anchorCfg: evt.anchor,
+        anchorMs: computeAnchorMs(evt.anchor),
+        anchorEl: el.querySelector('[data-anchor]'),
         countdownEl: el.querySelector('[data-countdown]'),
         nextEl: el.querySelector('[data-next]'),
         barEl: el.querySelector('[data-bar]'),
@@ -138,11 +146,12 @@
     function tick() {
       const now = Date.now();
       for (const c of cards) {
-        const next = nextOccurrence(now, c.intervalMs, ANCHOR_MS);
+        const next = nextOccurrence(now, c.intervalMs, c.anchorMs);
         const msLeft = next - now;
         c.countdownEl.textContent = formatDuration(msLeft);
         c.nextEl.textContent = next.toLocaleString();
-        c.barEl.style.width = (progressBetween(now, ANCHOR_MS, c.intervalMs) * 100).toFixed(4) + '%';
+        c.anchorEl.textContent = new Date(c.anchorMs).toLocaleString();
+        c.barEl.style.width = (progressBetween(now, c.anchorMs, c.intervalMs) * 100).toFixed(4) + '%';
       }
     }
 
