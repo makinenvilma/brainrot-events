@@ -14,13 +14,6 @@ A single‑file **HTML + JS** page that shows repeating Fortnite “brainrot” 
 ## Files
 
 * `index.html` — the app (all logic inline).
-* *(Optional)* `vercel.json` — rewrites all routes to `index.html` when hosting on Vercel.
-
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
 
 ## Installation & Setup
 
