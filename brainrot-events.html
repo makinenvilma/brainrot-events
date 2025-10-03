@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fortnite Brainrot - Events</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: #0b0b10; color: #E6E6EB; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 28px; margin: 0; letter-spacing: -0.02em; }
+    .muted { color: #9aa0aa; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
+    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .card h2 { font-size: 18px; margin: 0 0 4px; }
+    .small { font-size: 12px; color: #A7ADBB; }
+    .big { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 36px; letter-spacing: 0.03em; }
+    .bar { height: 8px; background: #1a1d24; border-radius: 999px; overflow: hidden; margin-top: 12px; }
+    .bar > div { height: 100%; background: #6D7CFF; width: 0%; transition: width 200ms linear; }
+    header { display: flex; flex-direction: column; gap: 6px; }
+    @media (min-width: 700px) { header { flex-direction: row; justify-content: space-between; align-items: flex-end; } }
+    code { background: #141621; border: 1px solid rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 8px; font-size: 12px; }
+    .hint { margin-top: 16px; font-size: 12px; color: #8d94a3; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Fortnite Brainrot – Events</h1>
+        <div class="muted" id="tz"></div>
+        <div class="muted">Anchor time: <span id="anchorText"></span></div>
+      </div>
+    </header>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="hint">
+      Victory awaits... stay locked in, the grind never stops.
+    </div>
+  </div>
+
+  <script>
+    // --- CONFIGURATION ---
+    // Set the ONE true start moment here: all timers align to this.
+    // mode: "UTC" (same moment globally) or "LOCAL" (interpreted in the viewer's local timezone)
+    const START_AT = {
+      mode: "UTC",   // "UTC" or "LOCAL"
+      year: 2025,
+      month: 10,       // 1-12 (human-friendly; code subtracts 1)
+      day: 3,         // 1-31 
+      hour: 6,        // 0-23
+      minute: 0,
+      second: 0
+    };
+
+    // Helper shorthands for intervals
+    const s = (n) => n * 1000;
+    const m = (n) => n * 60 * 1000;
+    const h = (n) => n * 60 * 60 * 1000;
+    const d = (n) => n * 24 * 60 * 60 * 1000;
+    const w = (n) => n * 7 * 24 * 60 * 60 * 1000;
+
+    // Your events (all start from START_AT)
+    const EVENTS = [
+      { name: "Underwater Event", intervalMs: h(3) },
+      { name: "LR Event", intervalMs: h(12) },
+      { name: "Event 3", intervalMs: w(1) },
+    ];
+    // --- END CONFIGURATION ---
+
+    const pad = (n) => String(n).padStart(2, "0");
+    function formatDuration(ms) {
+      if (ms < 0) ms = 0;
+      const total = Math.floor(ms / 1000);
+      const days = Math.floor(total / 86400);
+      const hours = Math.floor((total % 86400) / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const seconds = total % 60;
+      return days > 0 ? `${days} d ${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    function nextOccurrence(now, intervalMs, anchor) {
+      const elapsed = now - anchor;
+      const rem = ((elapsed % intervalMs) + intervalMs) % intervalMs;
+      const wait = rem === 0 ? intervalMs : (intervalMs - rem);
+      return new Date(now + wait);
+    }
+    function progressBetween(now, anchor, intervalMs) {
+      const elapsed = now - anchor;
+      const rem = ((elapsed % intervalMs) + intervalMs) % intervalMs;
+      return rem === 0 ? 1 : (rem / intervalMs);
+    }
+    function humanizeInterval(ms) {
+      const UNITS = [ [w(1), 'wk'], [d(1), 'd'], [h(1), 'h'], [m(1), 'min'], [s(1), 's'] ];
+      let rem = ms; const parts = [];
+      for (const [uMs, label] of UNITS) {
+        if (rem >= uMs) { const n = Math.floor(rem / uMs); parts.push(`${n} ${label}`); rem -= n * uMs; }
+      }
+      return parts.length ? parts.join(' ') : `${ms} ms`;
+    }
+
+    const grid = document.getElementById('grid');
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    document.getElementById('tz').textContent = `Timezone: ${tz} (start mode: ${START_AT.mode})`;
+
+    function computeAnchorMs() {
+      const monIdx = (START_AT.month - 1);
+      if (START_AT.mode === 'LOCAL') {
+        return new Date(START_AT.year, monIdx, START_AT.day, START_AT.hour, START_AT.minute, START_AT.second, 0).getTime();
+      }
+      // default to UTC
+      return Date.UTC(START_AT.year, monIdx, START_AT.day, START_AT.hour, START_AT.minute, START_AT.second, 0);
+    }
+
+    const ANCHOR_MS = computeAnchorMs();
+    document.getElementById('anchorText').textContent = new Date(ANCHOR_MS).toLocaleString();
+
+    const cards = EVENTS.map(evt => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = `
+        <h2>${evt.name}</h2>
+        <div class="small">Interval: ${humanizeInterval(evt.intervalMs)}</div>
+        <div style="margin-top:14px" class="big" data-countdown>00:00:00</div>
+        <div class="small" style="margin-top:6px">Next: <span data-next>-</span></div>
+        <div class="bar"><div data-bar></div></div>
+      `;
+      grid.appendChild(el);
+      return {
+        intervalMs: evt.intervalMs,
+        countdownEl: el.querySelector('[data-countdown]'),
+        nextEl: el.querySelector('[data-next]'),
+        barEl: el.querySelector('[data-bar]'),
+      };
+    });
+
+    function tick() {
+      const now = Date.now();
+      for (const c of cards) {
+        const next = nextOccurrence(now, c.intervalMs, ANCHOR_MS);
+        const msLeft = next - now;
+        c.countdownEl.textContent = formatDuration(msLeft);
+        c.nextEl.textContent = next.toLocaleString();
+        c.barEl.style.width = (progressBetween(now, ANCHOR_MS, c.intervalMs) * 100).toFixed(4) + '%';
+      }
+    }
+
+    tick();
+    setInterval(tick, 250);
+  </script>
+</body>
+</html>
