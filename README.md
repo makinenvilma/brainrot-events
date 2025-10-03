@@ -9,7 +9,7 @@ A single‑file **HTML + JS** page that shows repeating Fortnite “brainrot” 
 * **Zero‑dependency** static page — works by double‑clicking `index.html`.
 * **Per‑event anchors**: each timer can start from its own date & time.
 * **UTC or LOCAL** mode per event.
-* Clean UI: countdown, next occurrence timestamp, progress bar.
+* **Clean UI**: countdown, next occurrence timestamp, progress bar.
 
 ## Files
 
