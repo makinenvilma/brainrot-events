@@ -1,81 +1,108 @@
-# Fortnite Brainrot Events — Static Timers
+# Fortnite Brainrot Events
 
-A single‑file **HTML + JS** page that shows repeating Fortnite “brainrot” events as live countdowns. No build tools, no dependencies — just open `index.html`.
+Live countdowns to the repeating events in Fortnite Brainrot. Five timers, each on
+its own interval, with a progress bar showing how far into the current cycle each one
+is.
 
-> Demo: [https://brainrot-events.vercel.app/](https://brainrot-events.vercel.app/)
+The whole thing is one HTML file: no dependencies, no build step, no server.
 
-## Features
+Live at https://brainrot-events.vercel.app/
 
-* **Zero‑dependency** static page — works by double‑clicking `index.html`.
-* **Per‑event anchors**: each timer can start from its own date & time.
-* **UTC or LOCAL** mode per event.
-* **Clean UI**: countdown, next occurrence timestamp, progress bar.
+## Status
 
-## Files
+Finished and in use. Timers are edited by opening the file.
 
-* `index.html` — the app (all logic inline).
+Working right now:
 
-## Installation & Setup
+- Five events counting down at once, redrawn four times a second
+- Each event has its own interval and its own starting point
+- Next occurrence shown as a timestamp in the viewer's own timezone
+- Progress bar showing how far into the current cycle you are
+- Anchors can be written in UTC or in the viewer's local time
 
-### Local
+Not done yet:
 
-1. Download `index.html`.
-2. Open it in your browser (double‑click).
+- Events are edited in the `EVENTS` array inside `index.html`. There is no interface
+  for it and nothing is saved anywhere.
+- No sound, no notification, no countdown in the tab title. You have to be looking at
+  the page.
+- Nothing checks the intervals against the actual game. If an event changes, the page
+  keeps counting down to the wrong moment.
+- The countdown is arithmetic from one fixed instant, so daylight saving moves what
+  the timers land on in wall clock terms. There is a section on this below.
 
-## Configure timers
+## Tech
 
-Open `index.html` and edit the **CONFIGURATION** block. You already have **per‑event anchors**:
+Plain HTML, CSS and JavaScript in a single file. Dark theme, CSS grid that reflows to
+one column on a phone. Timing is `Date.now()` and modulo arithmetic against each
+event's anchor. Display goes through `toLocaleString()`, so everyone sees their own
+timezone no matter how the anchor was written.
+
+## Running it
+
+Open `index.html` in a browser.
+
+To put it online, any static host will do. The live version is on Vercel, which needs
+no configuration for a repo like this.
+
+## Configuring the timers
+
+Everything lives in the CONFIGURATION block near the top of the script:
 
 ```js
 const EVENTS = [
   {
     name: "Underwater Event",
     intervalMs: h(3),
-    anchor: { mode: "UTC", year: 2025, month: 10, day: 3, hour: 6, minute: 0, second: 0 }
+    anchor: { mode: "UTC", year: 2025, month: 10, day: 3, hour: 7, minute: 0, second: 0 }
   },
 ```
 
-### Intervals shorthand
-
-Use the helper functions to set repeat intervals:
-
-```js
-const s = (n) => n * 1000;       // seconds
-const m = (n) => n * 60 * 1000;   // minutes
-const h = (n) => n * 60 * 60 * 1000; // hours
-const d = (n) => n * 24 * 60 * 60 * 1000; // days
-const w = (n) => n * 7 * 24 * 60 * 60 * 1000; // weeks
-```
-
-### Anchor object
-
-* `mode`: `"UTC"` or `"LOCAL"`.
-* `year`, `month` (1–12), `day`, `hour` (0–23), `minute`, `second`.
-* **Display** is always localized (`toLocaleString()`), but math uses your anchor.
-
-**UTC vs LOCAL**
-
-* `UTC` → exact same instant globally. Local time on page will shift with DST.
-* `LOCAL` → interpreted in the viewer’s timezone. Good for “always 09:00 local”.
-
-**Example**: *Start at 09:00 Helsinki time on Oct 3, 2025.*
-
-* Helsinki is UTC+3 on 2025‑10‑03 → 09:00 local = 06:00 UTC.
-* Use either:
+Intervals use helper functions, so you write the unit instead of counting
+milliseconds:
 
 ```js
-anchor: { mode: "LOCAL", year: 2025, month: 10, day: 3, hour: 9, minute: 0, second: 0 }
-// or
-anchor: { mode: "UTC",   year: 2025, month: 10, day: 3, hour: 6, minute: 0, second: 0 }
+s(30)   // 30 seconds
+m(45)   // 45 minutes
+h(3)    // 3 hours
+d(2)    // 2 days
+w(1)    // 1 week
 ```
 
-## Timezone & DST tips
+The anchor is any one moment the event is known to have happened. Everything else is
+counted from there, forwards and backwards, so it is fine for it to be in the past.
+Months are 1 to 12 and hours are 0 to 23.
 
-* Months are **1–12** in config; code converts internally.
-* If you want *fixed local wall‑clock time* (e.g., always 09:00 Helsinki), use `mode: "LOCAL"`.
-* If you want *one global moment* (e.g., weekly server reset), use `mode: "UTC"`.
-* Around DST changes, `UTC` anchors will display one hour earlier/later locally; `LOCAL` anchors won’t.
+`mode: "UTC"` reads the anchor as a UTC timestamp, which is what you want when the
+event fires at the same instant for everybody. That is the case for all five events
+here. `mode: "LOCAL"` reads it in whatever timezone the viewer is in, which is only
+useful for something that follows each person's own clock.
 
----
+## A note on daylight saving
 
-**Made for quick Fortnite event timing — stay locked in, the grind never stops.**
+Once the anchor is fixed, the countdown is pure arithmetic: anchor plus some number of
+whole intervals. Nothing is recalculated against a calendar. So an event on a 24 hour
+interval that lands at 09:00 today will land at 08:00 or 10:00 after the clocks
+change, in LOCAL mode just as much as in UTC mode. LOCAL only changes how the anchor
+itself is read, not how the repeats are counted from it.
+
+Keeping an event at a fixed local wall clock time would mean recalculating each
+occurrence against the calendar rather than multiplying an interval. This does not do
+that, which does not matter for events that fire on a global timer.
+
+## Layout of the code
+
+```
+index.html    the entire thing: styles, config, timer logic, markup
+```
+
+Inside the script, in order: the interval helpers, the `EVENTS` array, duration
+formatting, `nextOccurrence` and `progressBetween` for the arithmetic, card creation,
+and a `tick` on a 250 ms interval that redraws everything.
+
+## Next up
+
+1. Editing events on the page instead of in the file
+2. Saving them, so edits survive a refresh
+3. A notification, or at least the countdown in the tab title
+4. Fix the "weeksly" typo in the config comments
